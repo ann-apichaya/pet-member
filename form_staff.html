@@ -24,10 +24,12 @@
   input,select,textarea{width:100%;padding:13px;border:1px solid var(--line);border-radius:9px;
         font-size:17px;font-family:inherit;background:#fff;color:var(--ink)}
   input:focus,select:focus,textarea:focus{outline:2px solid var(--brand2);border-color:transparent}
+  input:disabled,select:disabled{background:#eef2f4;color:var(--ink2)}
   button{width:100%;padding:14px;border:0;border-radius:9px;font-size:16px;font-weight:600;
          font-family:inherit;background:var(--brand);color:#fff;cursor:pointer;margin-top:10px}
   button.ghost{background:#fff;color:var(--brand);border:1px solid var(--brand)}
   button.warn{background:var(--bad)}
+  button.go{background:var(--ok)}
   button:disabled{opacity:.45;cursor:not-allowed}
   .row{display:flex;gap:8px}
   .row>*{flex:1}
@@ -36,6 +38,7 @@
   .msg.err{background:#fdecea;color:var(--bad)}
   .msg.ok{background:#e7f5ee;color:var(--ok)}
   .msg.info{background:#eef4f6;color:var(--ink2)}
+  .msg.step{background:#fff3e2;color:var(--warn);font-weight:600}
   .hit{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;background:#fff}
   .hit:active{background:#eef4f6}
   .hit b{font-size:16px}
@@ -48,6 +51,9 @@
   .kv span:first-child{color:var(--ink2)}
   .confirm{background:#fff8e6;border:1px solid #e8cf8a;border-radius:10px;padding:14px;text-align:center;margin:12px 0}
   .arrow{font-size:22px;font-weight:800;margin:6px 0}
+  .billbox{background:#eef8f2;border:1px solid #bfe3cf;border-radius:10px;padding:14px;margin:12px 0}
+  .chk{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:15px;color:var(--ink)}
+  .chk input{width:22px;height:22px;margin:0;flex:none}
   #reader{border-radius:10px;overflow:hidden;margin-top:10px}
   .foot{text-align:center;font-size:11px;color:var(--ink2);margin-top:18px;line-height:1.6}
 </style>
@@ -93,7 +99,7 @@
     </div>
 
     <div class="msg info" style="margin-top:12px">
-      ถามยืนยันกับลูกค้าก่อนตัดแต้มทุกครั้ง
+      แจ้งลูกค้า 3 ตัวเลข ทุกครั้ง แต้มที่มี แต้มที่จะหัก และคงเหลือหลังหัก
     </div>
 
     <div style="text-align:center;margin:6px 0 12px">
@@ -122,20 +128,37 @@
       <input id="note" placeholder="ไม่บังคับ">
     </div>
 
+    <!-- จังหวะ 2: จอยืนยันกับลูกค้า -->
     <div class="confirm hide" id="confirmBox">
       <div style="font-size:13px;color:var(--ink2)" id="cfLabel"></div>
       <div class="arrow"><span id="cfBefore"></span> &rarr; <span id="cfAfter"></span></div>
-      <div style="font-size:12px;color:var(--ink2)">ตรวจตัวเลขกับลูกค้าก่อนกดยืนยัน</div>
+      <div style="font-size:12px;color:var(--ink2)">อ่านตัวเลขให้ลูกค้าฟัง และให้ลูกค้ายืนยันก่อน</div>
+    </div>
+
+    <!-- จังหวะ 3: กดส่วนลดที่ POS แล้วกลับมากรอกเลขบิล -->
+    <div class="billbox hide" id="billBox">
+      <div class="msg step" style="margin:0 0 10px">
+        ล็อกรายการแล้ว ไปกดส่วนลดที่ POS และปิดบิล<br>
+        เสร็จแล้วกลับมากรอกเลขที่บิลด้านล่าง
+      </div>
+      <label>เลขที่บิลจาก POS</label>
+      <input id="bill" placeholder="เช่น EXP1069225" autocomplete="off">
+      <div class="chk">
+        <input id="noBill" type="checkbox">
+        <span>รายการนี้ไม่มีบิล (แลกของโดยไม่ได้ซื้ออะไร)</span>
+      </div>
     </div>
 
     <button id="btnPreview">ตรวจสอบก่อนตัดแต้ม</button>
-    <button id="btnConfirm" class="warn hide">ยืนยันตัดแต้ม</button>
+    <button id="btnLock" class="go hide">ยืนยันสิทธิ์ (ยังไม่ตัดแต้ม)</button>
+    <button id="btnSave" class="warn hide">บันทึกและตัดแต้ม</button>
+    <button id="btnCancelLock" class="ghost hide">ยกเลิกรายการนี้</button>
     <button id="btnBack" class="ghost">ค้นหาคนอื่น</button>
     <div id="memberMsg"></div>
   </section>
 
   <div class="foot">
-    ทุกรายการบันทึกชื่อผู้ทำและเวลาเสมอ<br>
+    ทุกรายการบันทึกชื่อผู้ทำ เวลา และเลขที่บิลเสมอ<br>
     แต้มจากค่ารักษาอัปเดตวันละครั้ง ภายใน 24 ชม.
   </div>
 </div>
@@ -146,7 +169,8 @@
    ============================================================ */
 var API = 'https://script.google.com/macros/s/AKfycbyzYsfL0Nu6A595CaHRLSabQS1iL6tuPQ31-gZAI-ZjICDcM9gihOHlomkBOLFqH_91/exec';
 
-var S = { pin:'', staff:null, member:null, items:[], busy:false, scanner:null, armed:false };
+var S = { pin:'', staff:null, member:null, items:[], busy:false, scanner:null,
+          locked:false, lockedForm:null };
 var $ = function(id){ return document.getElementById(id); };
 
 /* ---------- คุยกับหลังบ้านแบบ JSONP กัน CORS ---------- */
@@ -252,7 +276,7 @@ function fillItems(){
 function onItemChange(){
   var it = S.items[+$('item').value];
   show('customBox', !!(it && it.custom));
-  resetConfirm();
+  resetFlow();
 }
 function openMember(m){
   stopScan();
@@ -266,18 +290,33 @@ function openMember(m){
   $('mEarn').textContent = m.earned;
   $('mExp').textContent = m.expiry || '-';
   $('note').value = ''; $('customLabel').value = ''; $('customPts').value = '';
-  resetConfirm();
+  resetFlow();
   show('scFind', false); show('scMember', true); say('memberMsg','');
   window.scrollTo(0,0);
 }
 $('btnBack').onclick = function(){
+  if(S.locked){
+    say('memberMsg','มีรายการค้างยืนยันอยู่ กด "ยกเลิกรายการนี้" ก่อน ถ้าไม่ทำต่อ','err');
+    return;
+  }
   show('scMember', false); show('scFind', true);
   $('q').value = ''; $('hits').innerHTML = ''; say('findMsg',''); S.member = null;
 };
 
-function resetConfirm(){
-  S.armed = false;
-  show('confirmBox', false); show('btnConfirm', false); show('btnPreview', true);
+/* ---------- flow 3 จังหวะ: ตรวจสอบ -> ยืนยันสิทธิ์ -> กรอกบิลและตัดแต้ม ---------- */
+function setLockUI(on){
+  $('item').disabled = on;
+  $('customLabel').disabled = on;
+  $('customPts').disabled = on;
+  $('note').disabled = on;
+}
+function resetFlow(){
+  S.locked = false; S.lockedForm = null;
+  setLockUI(false);
+  $('bill').value = ''; $('noBill').checked = false;
+  show('confirmBox', false); show('billBox', false);
+  show('btnPreview', true); show('btnLock', false);
+  show('btnSave', false); show('btnCancelLock', false);
 }
 
 function readForm(){
@@ -299,6 +338,7 @@ function readForm(){
   return { code:code, label:label, pts:pts, note:note };
 }
 
+/* จังหวะ 1: ตรวจสอบ แสดง 3 ตัวเลขให้อ่านกับลูกค้า */
 $('btnPreview').onclick = function(){
   var f = readForm();
   if(f.err){ say('memberMsg', f.err, 'err'); return; }
@@ -307,29 +347,63 @@ $('btnPreview').onclick = function(){
                              '  (' + Math.abs(f.pts) + ' แต้ม)';
   $('cfBefore').textContent = S.member.balance;
   $('cfAfter').textContent = S.member.balance - f.pts;
-  show('confirmBox', true); show('btnConfirm', true); show('btnPreview', false);
-  S.armed = true;
+  show('confirmBox', true);
+  show('btnPreview', false); show('btnLock', true);
 };
 
-$('btnConfirm').onclick = function(){
-  if(!S.armed || S.busy) return;
+/* จังหวะ 2: ลูกค้ายืนยันแล้ว ล็อกรายการไว้ ยังไม่เขียนอะไรลงชีต */
+$('btnLock').onclick = function(){
   var f = readForm();
-  if(f.err){ say('memberMsg', f.err, 'err'); resetConfirm(); return; }
+  if(f.err){ say('memberMsg', f.err, 'err'); resetFlow(); return; }
+  S.locked = true;
+  S.lockedForm = f;
+  setLockUI(true);
+  show('btnLock', false);
+  show('billBox', true); show('btnSave', true); show('btnCancelLock', true);
+  say('memberMsg','');
+  $('bill').focus();
+};
+
+/* ยกเลิกก่อนตัดแต้มจริง ไม่มีอะไรถูกบันทึก แค่ปลดล็อกหน้าจอ */
+$('btnCancelLock').onclick = function(){
+  resetFlow();
+  say('memberMsg','ยกเลิกแล้ว ยังไม่มีการตัดแต้มใดๆ','info');
+};
+
+/* ติ๊กไม่มีบิล = ปิดช่องเลขบิล */
+$('noBill').onchange = function(){
+  $('bill').disabled = this.checked;
+  if(this.checked) $('bill').value = '';
+};
+
+/* จังหวะ 3: กรอกเลขบิลจาก POS แล้วตัดแต้มจริง */
+$('btnSave').onclick = function(){
+  if(!S.locked || S.busy || !S.lockedForm) return;
+  var f = S.lockedForm;
+  var noBill = $('noBill').checked;
+  var bill = $('bill').value.trim();
+
+  if(f.pts > 0 && !noBill && !bill){
+    say('memberMsg','ต้องกรอกเลขที่บิลจาก POS หรือติ๊ก "รายการนี้ไม่มีบิล"','err');
+    $('bill').focus();
+    return;
+  }
 
   S.busy = true; this.disabled = true; this.textContent = 'กำลังบันทึก...';
   say('memberMsg','');
   var reqId = 'R' + Date.now() + Math.floor(Math.random()*1000);
 
   call({ action:'redeem', pin:S.pin, cid:S.member.cid, code:f.code,
-         label:f.label, pts:f.pts, note:f.note, reqId:reqId }, function(r){
+         label:f.label, pts:f.pts, note:f.note,
+         bill:bill, nobill:(noBill ? '1' : ''), reqId:reqId }, function(r){
     S.busy = false;
-    $('btnConfirm').disabled = false; $('btnConfirm').textContent = 'ยืนยันตัดแต้ม';
-    if(!r.ok){ say('memberMsg', r.error, 'err'); resetConfirm(); return; }
+    $('btnSave').disabled = false; $('btnSave').textContent = 'บันทึกและตัดแต้ม';
+    if(!r.ok){ say('memberMsg', r.error, 'err'); return; }
     S.member.balance = r.balance;
     $('mBal').textContent = r.balance;
     say('memberMsg','บันทึกสำเร็จ' + (r.txId ? ' เลขที่ ' + r.txId : '') +
         '<br>แต้มคงเหลือใหม่ ' + r.balance + ' แต้ม', 'ok');
-    resetConfirm();
+    resetFlow();
     $('note').value = ''; $('customLabel').value = ''; $('customPts').value = '';
   });
 };
