@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>บัตรสมาชิก โรงพยาบาลสัตว์กิตติคุณ</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --ink:#16323d; --ink2:#5b7480; --line:#dbe4e8; --bg:#f4f7f8;
+    --brand:#1f4e5f; --brand2:#2c6b80; --ok:#137a4b; --bad:#b3261e;
+    --silver:#8d9aa2; --gold:#a97f13; --plat:#5d5d8a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:"Sarabun","Noto Sans Thai",system-ui,sans-serif;font-size:16px}
+  .wrap{max-width:430px;margin:0 auto;padding:16px 14px 40px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:12px}
+  h1{font-size:18px;margin:0 0 4px;color:var(--brand)}
+  .sub{font-size:13px;color:var(--ink2);margin-bottom:14px}
+  label{display:block;font-size:13px;color:var(--ink2);margin:12px 0 6px}
+  input{width:100%;padding:13px;border:1px solid var(--line);border-radius:9px;
+        font-size:17px;font-family:inherit;background:#fff;color:var(--ink)}
+  input:focus{outline:2px solid var(--brand2);border-color:transparent}
+  button{width:100%;padding:14px;border:0;border-radius:9px;font-size:16px;font-weight:600;
+         font-family:inherit;background:var(--brand);color:#fff;cursor:pointer;margin-top:14px}
+  button.ghost{background:#fff;color:var(--brand);border:1px solid var(--brand)}
+  button:disabled{opacity:.45}
+  .hide{display:none!important}
+  .msg{padding:11px 13px;border-radius:9px;font-size:14px;margin:12px 0 0;line-height:1.6}
+  .msg.err{background:#fdecea;color:var(--bad)}
+  .msg.info{background:#eef4f6;color:var(--ink2)}
+  .pick{border:1px solid var(--line);border-radius:10px;padding:13px;margin-top:8px;cursor:pointer;background:#fff}
+  .pick:active{background:#eef4f6}
+  .pick b{font-size:16px}
+  .pick small{color:var(--ink2)}
+
+  /* ---------- ตัวบัตร ---------- */
+  .member{border-radius:16px;padding:20px 18px;color:#fff;margin-bottom:12px;
+          background:linear-gradient(135deg,var(--brand) 0%,var(--brand2) 100%)}
+  .member.Gold{background:linear-gradient(135deg,#8a6a10 0%,#c49a2a 100%)}
+  .member.Platinum{background:linear-gradient(135deg,#3e3e63 0%,#6d6da0 100%)}
+  .member .top{display:flex;justify-content:space-between;align-items:flex-start}
+  .member .hosp{font-size:12px;opacity:.85}
+  .member .name{font-size:20px;font-weight:700;margin-top:2px}
+  .tier{display:inline-block;padding:3px 12px;border-radius:20px;font-size:13px;font-weight:700;
+        background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.5)}
+  .balrow{display:flex;justify-content:space-between;align-items:flex-end;margin-top:18px}
+  .balrow .lab{font-size:12px;opacity:.85}
+  .balrow .num{font-size:40px;font-weight:800;line-height:1}
+  .balrow .cid{font-size:12px;opacity:.85;text-align:right}
+  .qrcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;text-align:center}
+  #qr{display:flex;justify-content:center;margin:10px 0}
+  #qr img,#qr canvas{border-radius:6px}
+  .qrcard .hint{font-size:13px;color:var(--ink2);line-height:1.6}
+  .kv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--line);font-size:14px}
+  .kv:last-child{border:0}
+  .kv span:first-child{color:var(--ink2)}
+  .foot{text-align:center;font-size:11px;color:var(--ink2);margin-top:16px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- กำลังโหลด -->
+  <section class="card" id="scLoad">
+    <h1>บัตรสมาชิก</h1>
+    <div class="sub">โรงพยาบาลสัตว์กิตติคุณ (24 ชม.)</div>
+    <div class="msg info" id="loadMsg">กำลังเชื่อมต่อ...</div>
+  </section>
+
+  <!-- ผูกบัตรครั้งแรก -->
+  <section class="card hide" id="scBind">
+    <h1>สมัคร / เปิดใช้บัตรสมาชิก</h1>
+    <div class="sub">ลูกค้าที่เคยใช้บริการ เป็นสมาชิกอยู่แล้วโดยอัตโนมัติ
+      กรอกข้อมูลให้ตรงกับที่เคยแจ้งไว้กับโรงพยาบาล เพื่อเปิดใช้บัตรในไลน์</div>
+
+    <label>เบอร์โทรศัพท์ที่แจ้งไว้กับโรงพยาบาล</label>
+    <input id="tel" type="tel" inputmode="numeric" maxlength="10" placeholder="เช่น 0812345678" autocomplete="off">
+
+    <label>ชื่อเจ้าของสัตว์เลี้ยง (ชื่อจริง ไม่ต้องใส่คำนำหน้า)</label>
+    <input id="name" placeholder="เช่น สมหญิง" autocomplete="off">
+
+    <button id="btnBind">เปิดใช้บัตรสมาชิก</button>
+    <div id="bindMsg"></div>
+
+    <div id="pickBox" class="hide">
+      <div class="msg info">พบข้อมูลของคุณมากกว่า 1 รายการ
+        เลือกรายการที่จะใช้เป็น <b>บัตรหลัก</b> ของคุณ</div>
+      <div id="picks"></div>
+      <div class="msg info" style="font-size:13px">แต้มในรายการที่ไม่ได้เลือก จะยังอยู่ในรหัสเดิม
+        ไม่หายไป ถ้าต้องการรวมแต้มเข้าบัตรหลัก แจ้งเคาน์เตอร์โรงพยาบาลได้</div>
+    </div>
+
+    <div id="confirmPickBox" class="hide">
+      <div class="msg info" id="confirmPickDetail"></div>
+      <button id="btnConfirmPick">ยืนยันใช้บัตรนี้เป็นบัตรหลัก</button>
+      <button class="ghost" id="btnCancelPick">เลือกใหม่</button>
+    </div>
+  </section>
+
+  <!-- ตัวบัตร -->
+  <section class="hide" id="scCard">
+    <div class="member" id="cardBg">
+      <div class="top">
+        <div>
+          <div class="hosp">โรงพยาบาลสัตว์กิตติคุณ</div>
+          <div class="name" id="cName"></div>
+        </div>
+        <span class="tier" id="cTier"></span>
+      </div>
+      <div class="balrow">
+        <div>
+          <div class="lab">แต้มคงเหลือ</div>
+          <div class="num" id="cBal">0</div>
+        </div>
+        <div class="cid">รหัสสมาชิก<br><b id="cCid"></b></div>
+      </div>
+    </div>
+
+    <div class="qrcard">
+      <b>แสดง QR นี้ให้พนักงานสแกน</b>
+      <div id="qr"></div>
+      <div class="hint">ใช้สะสมสิทธิ์ แลกแต้ม และรับส่วนลดตามระดับสมาชิก</div>
+    </div>
+
+    <div class="card">
+      <div class="kv"><span>ระดับสมาชิก</span><b id="cTier2"></b></div>
+      <div class="kv"><span>แต้มที่ได้ทั้งหมด</span><b id="cEarn"></b></div>
+      <div class="kv"><span>ระดับหมดอายุ</span><b id="cExp"></b></div>
+    </div>
+
+    <button class="ghost" id="btnRefresh">อัปเดตแต้มล่าสุด</button>
+    <div id="cardMsg"></div>
+  </section>
+
+  <div class="foot">
+    แต้มจากค่ารักษาอัปเดตวันละครั้ง ภายใน 24 ชม.<br>
+    สอบถามเพิ่มเติมได้ที่เคาน์เตอร์โรงพยาบาล
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   ตั้งค่า 2 บรรทัดนี้ก่อนใช้งาน
+   1. LIFF_ID จากหน้า LINE Developers (ขั้นตอนอยู่ท้ายไฟล์ form_backend.gs)
+   2. API = URL เว็บแอป Apps Script ตัวเดียวกับฟอร์มพนักงาน
+   ============================================================ */
+var LIFF_ID = 'ใส่ LIFF ID ที่นี่';
+var API = 'ใส่ URL เว็บแอปที่นี่';
+
+var S = { token:'', busy:false };
+var $ = function(id){ return document.getElementById(id); };
+
+/* ---------- คุยกับหลังบ้านแบบ JSONP กัน CORS ---------- */
+function call(params, cb){
+  var name = 'cb_' + Date.now() + '_' + Math.floor(Math.random()*1e6);
+  var done = false;
+  var t = setTimeout(function(){
+    if(done) return; done = true; cleanup();
+    cb({ ok:false, error:'เชื่อมต่อไม่ได้ ตรวจสัญญาณอินเทอร์เน็ตแล้วลองใหม่' });
+  }, 20000);
+  window[name] = function(res){ if(done) return; done = true; clearTimeout(t); cleanup(); cb(res); };
+  function cleanup(){ try{ delete window[name]; }catch(e){ window[name] = undefined; }
+                      if(s && s.parentNode) s.parentNode.removeChild(s); }
+  var qs = ['callback=' + name];
+  for(var k in params) qs.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k] == null ? '' : params[k]));
+  var s = document.createElement('script');
+  s.src = API + '?' + qs.join('&');
+  s.onerror = function(){ if(done) return; done = true; clearTimeout(t); cleanup();
+                          cb({ ok:false, error:'เรียกเซิร์ฟเวอร์ไม่สำเร็จ' }); };
+  document.body.appendChild(s);
+}
+function say(el, text, kind){ $(el).innerHTML = text ? '<div class="msg '+(kind||'info')+'">'+text+'</div>' : ''; }
+function show(id, on){ $(id).classList.toggle('hide', !on); }
+
+/* ---------- เริ่มต้น: เข้า LIFF แล้วเช็คว่าผูกบัตรแล้วหรือยัง ---------- */
+function boot(){
+  if(LIFF_ID.indexOf('ใส่') === 0 || API.indexOf('http') !== 0){
+    say('loadMsg','ยังตั้งค่าไฟล์ไม่ครบ (LIFF_ID หรือ API)','err'); return;
+  }
+  liff.init({ liffId: LIFF_ID }).then(function(){
+    if(!liff.isLoggedIn()){ liff.login(); return; }
+    S.token = liff.getAccessToken();
+    if(!S.token){ say('loadMsg','เปิดหน้านี้จากในแอป LINE เท่านั้น','err'); return; }
+    // ถามหลังบ้านว่าไลน์นี้ผูกบัตรแล้วหรือยัง
+    call({ action:'card', token:S.token }, function(r){
+      if(r.ok && r.member){ showCard(r.member); return; }
+      if(r.ok && !r.member){ show('scLoad', false); show('scBind', true); return; }
+      say('loadMsg', r.error || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง', 'err');
+    });
+  }).catch(function(e){
+    say('loadMsg','เปิดหน้านี้จากในแอป LINE เท่านั้น<br>(' + e + ')','err');
+  });
+}
+
+/* ---------- ผูกบัตร ---------- */
+function bind(cid){
+  if(S.busy) return;
+  var tel = $('tel').value.replace(/[^0-9]/g,'');
+  var name = $('name').value.trim();
+  if(tel.length < 9){ say('bindMsg','กรอกเบอร์โทรให้ครบ','err'); return; }
+  if(name.length < 2){ say('bindMsg','กรอกชื่อเจ้าของสัตว์เลี้ยง','err'); return; }
+  S.busy = true; $('btnBind').disabled = true;
+  say('bindMsg','กำลังตรวจสอบ...','info');
+  call({ action:'bind', token:S.token, tel:tel, name:name, cid:(cid || '') }, function(r){
+    S.busy = false; $('btnBind').disabled = false;
+    if(!r.ok){ say('bindMsg', r.error, 'err'); show('pickBox', false); return; }
+    if(r.candidates){
+      // ข้อมูลของลูกค้าคนเดียวกันมีหลายรหัส
+      // แสดงแต้มของแต่ละกอง ให้เลือกว่าใช้กองไหนเป็นบัตรหลัก
+      say('bindMsg','');
+      show('pickBox', true); show('confirmPickBox', false);
+      $('picks').innerHTML = '';
+      r.candidates.forEach(function(c){
+        var d = document.createElement('div');
+        d.className = 'pick';
+        d.innerHTML = '<b>รหัส ' + c.cid + '</b>' +
+                      ' <span class="tier t-' + c.tier + '" style="background:#5b7480;color:#fff;padding:2px 9px;border-radius:20px;font-size:12px">' + c.tier + '</span>' +
+                      '<br><small>แต้มคงเหลือ <b>' + c.balance + '</b> แต้ม' +
+                      '<br>สัตว์เลี้ยง: ' + (c.pets || 'ไม่มีข้อมูล') + '</small>';
+        d.onclick = function(){ askConfirmPick(c); };
+        $('picks').appendChild(d);
+      });
+      return;
+    }
+    showCard(r.member);
+  });
+}
+$('btnBind').onclick = function(){ bind(''); };
+
+/* เลือกแล้ว ยืนยันอีกชั้นก่อนผูกจริง */
+function askConfirmPick(c){
+  show('pickBox', false); show('confirmPickBox', true);
+  $('confirmPickDetail').innerHTML =
+    'บัตรหลักของคุณจะเป็น <b>รหัส ' + c.cid + '</b>' +
+    '<br>แต้มคงเหลือ <b>' + c.balance + '</b> แต้ม  ระดับ ' + c.tier +
+    (c.pets ? '<br>สัตว์เลี้ยง: ' + c.pets : '');
+  $('btnConfirmPick').onclick = function(){ bind(c.cid); };
+}
+$('btnCancelPick').onclick = function(){
+  show('confirmPickBox', false); show('pickBox', true);
+};
+
+/* ---------- แสดงบัตร ---------- */
+function showCard(m){
+  show('scLoad', false); show('scBind', false); show('scCard', true);
+  $('cardBg').className = 'member ' + (m.tier || '');
+  $('cName').textContent = m.name;
+  $('cTier').textContent = m.tier;
+  $('cTier2').textContent = m.tier;
+  $('cBal').textContent = m.balance;
+  $('cCid').textContent = m.cid;
+  $('cEarn').textContent = m.earned;
+  $('cExp').textContent = m.expiry || '-';
+  $('qr').innerHTML = '';
+  new QRCode($('qr'), { text: String(m.cid), width: 190, height: 190,
+                        correctLevel: QRCode.CorrectLevel.M });
+  say('cardMsg','');
+}
+$('btnRefresh').onclick = function(){
+  if(S.busy) return;
+  S.busy = true; this.disabled = true; say('cardMsg','กำลังอัปเดต...','info');
+  call({ action:'card', token:S.token }, function(r){
+    S.busy = false; $('btnRefresh').disabled = false;
+    if(r.ok && r.member){ showCard(r.member); return; }
+    say('cardMsg', r.error || 'อัปเดตไม่สำเร็จ ลองใหม่อีกครั้ง', 'err');
+  });
+};
+
+boot();
+</script>
+</body>
+</html>
